@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		std::filesystem::canonical("/proc/self/exe/");
+		// std::filesystem::canonical("/proc/self/exe/");
 	}
 
 	if (argc <= 1)
