@@ -1,35 +1,42 @@
-#include <stdio.h>
+#include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <cstring>
 #include <string>
-#include <filesystem>
-
-#ifdef _WIN32
-bool windows = true;
 #include <libloaderapi.h>
-#endif
+#include <Windows.h>
+#include <sys/stat.h>
 
-#ifdef __unix__
-bool windows = false;
-#endif
+bool doesPathExist(const std::string &s)
+{
+	struct stat buffer;
+	return (stat(s.c_str(), &buffer) == 0);
+}
 
 int main(int argc, char *argv[])
 {
-	if (windows)
-	{
-		char pBuf[256];
+	char runPath[256];
 
-		GetModuleFileNameA(NULL, pBuf, sizeof(pBuf));
+	GetModuleFileNameA(NULL, runPath, sizeof(runPath));
 
-		printf(pBuf);
-	}
-	else
+	std::string runPathString = std::string(runPath);
+	int barPos = runPathString.find_last_of('\\');
+	std::string composedPath = runPathString.substr(0, barPos) + "\\.pnvc";
+
+	int n = composedPath.length();
+	char composedPathArray[n + 1];
+
+	strcpy(composedPathArray, composedPath.c_str());
+
+	if (!doesPathExist(composedPath))
 	{
-		// std::filesystem::canonical("/proc/self/exe/");
+		CreateDirectory(composedPathArray, NULL);
+		SetFileAttributes(composedPathArray, FILE_ATTRIBUTE_HIDDEN);
 	}
 
 	if (argc <= 1)
 	{
-		printf("Welcome to PNVC, insert help here blah blah...");
+		std::cout << "Welcome to PNVC, insert help here blah blah...";
 	}
 	else
 	{
