@@ -12,6 +12,7 @@ bool windows = true;
 bool windows = false;
 #endif
 
+// test
 int main(int argc, char *argv[])
 {
 	if (windows)
