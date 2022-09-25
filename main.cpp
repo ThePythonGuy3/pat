@@ -1,45 +1,70 @@
 #include <iostream>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <cstring>
+#include <filesystem>
 #include <string>
-#include <libloaderapi.h>
+#include <vector>
+#ifdef _WIN32
 #include <Windows.h>
-#include <sys/stat.h>
+#endif
 
-bool doesPathExist(const std::string &s)
+bool checkCommand(int argc, char *argv[], std::string cmd, int argumentsRequired)
 {
-	struct stat buffer;
-	return (stat(s.c_str(), &buffer) == 0);
+	const char *command = cmd.c_str();
+
+	if (strcmp(argv[1], command) == 0)
+	{
+		return argumentsRequired == -1 || argc == (argumentsRequired + 2);
+	}
+
+	return false;
 }
 
 int main(int argc, char *argv[])
 {
-	char runPath[256];
+	std::filesystem::path working_dir = std::filesystem::canonical(".");
+	std::filesystem::path composedPath = working_dir += "\\.pnvc";
+	int n = composedPath.string().length();
 
-	GetModuleFileNameA(NULL, runPath, sizeof(runPath));
+	char *composedPathArray = new char[n + 1];
 
-	std::string runPathString = std::string(runPath);
-	int barPos = runPathString.find_last_of('\\');
-	std::string composedPath = runPathString.substr(0, barPos) + "\\.pnvc";
-
-	int n = composedPath.length();
-	char composedPathArray[n + 1];
-
-	strcpy(composedPathArray, composedPath.c_str());
-
-	if (!doesPathExist(composedPath))
-	{
-		CreateDirectory(composedPathArray, NULL);
-		SetFileAttributes(composedPathArray, FILE_ATTRIBUTE_HIDDEN);
-	}
+	strcpy(composedPathArray, composedPath.string().c_str());
 
 	if (argc <= 1)
 	{
-		std::cout << "Welcome to PNVC, insert help here blah blah...";
+		std::cout << "Welcome to PNVC, insert help here blah blah..." << std::endl;
 	}
 	else
 	{
+		// Init command
+		if (checkCommand(argc, argv, "init", 0))
+		{
+
+			if (!std::filesystem::exists(composedPath))
+			{
+				std::error_code ec;
+				bool successOnCreation = std::filesystem::create_directory(composedPath, ec);
+
+#ifdef _WIN32
+
+				bool successOnHiding = SetFileAttributes(composedPathArray, FILE_ATTRIBUTE_HIDDEN);
+
+				if (!successOnHiding)
+					successOnCreation = false;
+#endif
+
+				// TODO main files creation.
+
+				if (successOnCreation)
+				{
+					std::cout << "PNVC initialized." << std::endl;
+				}
+				else
+				{
+					std::cout << "ERROR: " << ec.message() << std::endl
+							  << "PNVC failed to initialize here." << std::endl;
+				}
+			}
+		}
+
 		// Add command
 		if (strcmp(argv[1], "add") == 0)
 		{
@@ -55,5 +80,7 @@ int main(int argc, char *argv[])
 			{
 			}
 		}
+
+		std::cout << std::endl;
 	}
 }
