@@ -1,18 +1,38 @@
+// Project Administration Tool (PAT) by @ThePythonGuy3
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 #include <string>
-#include <vector>
+#include "./crypto/md5.cpp"
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
-bool checkCommand(int argc, char *argv[], std::string cmd, int argumentsRequired)
+std::string cmdNames[6] = {"init", "track", "register", "push", "copy", "help"};
+std::string helpQuotes[6] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'"};
+
+// Check if the command syntax is correct.
+bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired)
 {
-	const char *command = cmd.c_str();
+	if (commandStr != "init" && !std::filesystem::exists(patPath))
+	{
+		std::cout << "The current directory is not PAT-enabled. Activate PAT by using the 'pat init' command.";
+		return false;
+	}
+
+	const char *command = commandStr.c_str();
 
 	if (strcmp(argv[1], command) == 0)
 	{
-		return argumentsRequired == -1 || argc == (argumentsRequired + 2);
+		bool result = argumentsRequired == -1 || argc == (argumentsRequired + 2);
+
+		if (!result)
+		{
+			std::cout << "Wrong syntax for command '" << commandStr << "'. The command takes " << argumentsRequired << (argumentsRequired == 1 ? " argument" : " arguments") << " but " << (argc - 2) << ((argc - 2) == 1 ? " was" : " were") << " given. See 'pat help'." << std::endl;
+		}
+
+		return result;
 	}
 
 	return false;
@@ -20,67 +40,96 @@ bool checkCommand(int argc, char *argv[], std::string cmd, int argumentsRequired
 
 int main(int argc, char *argv[])
 {
-	std::filesystem::path working_dir = std::filesystem::canonical(".");
-	std::filesystem::path composedPath = working_dir += "\\.pnvc";
-	int n = composedPath.string().length();
+	// The working directory path.
+	std::filesystem::path workingPath = std::filesystem::canonical(".");
 
-	char *composedPathArray = new char[n + 1];
+	// The .pat/ directory path inside of the working directory.
+	std::filesystem::path patPath = workingPath / ".pat";
 
-	strcpy(composedPathArray, composedPath.string().c_str());
+	int n = patPath.string().length();
 
+	// The .pat/ directory path inside the working directory in string form.
+	char *patPathArray = new char[n + 1];
+	strcpy(patPathArray, patPath.string().c_str());
+
+	// One single argument. Pops out help.
 	if (argc <= 1)
 	{
-		std::cout << "Welcome to PNVC, insert help here blah blah..." << std::endl;
+		std::cout << "Welcome to PAT, insert help here blah blah..." << std::endl;
 	}
 	else
 	{
-		// Init command
-		if (checkCommand(argc, argv, "init", 0))
+		bool valid = false;
+		for (int i = 0; i < cmdNames->length(); i++)
 		{
-
-			if (!std::filesystem::exists(composedPath))
+			if (argv[1] == cmdNames[i])
 			{
-				std::error_code ec;
-				bool successOnCreation = std::filesystem::create_directory(composedPath, ec);
+				valid = true;
+				break;
+			}
+		}
+
+		if (valid)
+		{
+			// 'init' command. Enables PAT for the current directory. 'pat init'
+			if (checkCommand(argc, argv, patPath, "init", 0))
+			{
+				if (!std::filesystem::exists(patPath))
+				{
+					bool successOnCreation = std::filesystem::create_directory(patPath);
 
 #ifdef _WIN32
-
-				bool successOnHiding = SetFileAttributes(composedPathArray, FILE_ATTRIBUTE_HIDDEN);
-
-				if (!successOnHiding)
-					successOnCreation = false;
+					// Only hide the folder in Windows, UNIX based OS' hide folders whose name starts with a '.' automatically.
+					if (!SetFileAttributes(patPathArray, FILE_ATTRIBUTE_HIDDEN))
+						successOnCreation = false;
 #endif
 
-				// TODO main files creation.
+					std::ofstream ofs(patPath / "history");
+					ofs.close();
 
-				if (successOnCreation)
-				{
-					std::cout << "PNVC initialized." << std::endl;
+					if (successOnCreation)
+					{
+						std::cout << "PAT initialized." << std::endl;
+					}
+					else
+					{
+						std::cout << "PAT failed to initialize here." << std::endl;
+					}
 				}
 				else
 				{
-					std::cout << "ERROR: " << ec.message() << std::endl
-							  << "PNVC failed to initialize here." << std::endl;
+					std::cout << "PAT already enabled in this directory." << std::endl;
 				}
 			}
-		}
 
-		// Add command
-		if (strcmp(argv[1], "add") == 0)
-		{
-			if (argc >= 2)
+			// 'track' command. Tracks all changes done to the working directory. 'pat track'
+			if (checkCommand(argc, argv, patPath, "track", 0))
 			{
 			}
-		}
 
-		// Commit command
-		if (strcmp(argv[1], "commit") == 0)
-		{
-			if (argc >= 2)
+			// 'register' command. Registers the current changes under a name. 'pat register {name}'
+			if (checkCommand(argc, argv, patPath, "register", 1))
 			{
+				std::cout << argc;
+			}
+
+			// 'push' command. Pushes the changes made into the remote server's project. 'pat push'
+			if (checkCommand(argc, argv, patPath, "push", 0))
+			{
+				std::cout << argc;
+			}
+
+			// 'copy' command. Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'
+			if (checkCommand(argc, argv, patPath, "copy", 1))
+			{
+				std::cout << argc;
 			}
 		}
-
-		std::cout << std::endl;
+		else
+		{
+			std::cout << "'" << argv[1] << "' is not a PAT command. See 'pat help'." << std::endl;
+		}
 	}
+
+	std::cout << std::endl;
 }
