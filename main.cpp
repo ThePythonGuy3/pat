@@ -77,6 +77,8 @@ int main(int argc, char *argv[])
 				if (!std::filesystem::exists(patPath))
 				{
 					bool successOnCreation = std::filesystem::create_directory(patPath);
+					if (!std::filesystem::create_directory(patPath / "objects"))
+						successOnCreation = false;
 
 #ifdef _WIN32
 					// Only hide the folder in Windows, UNIX based OS' hide folders whose name starts with a '.' automatically.
@@ -123,6 +125,18 @@ int main(int argc, char *argv[])
 			if (checkCommand(argc, argv, patPath, "copy", 1))
 			{
 				std::cout << argc;
+			}
+
+			// 'help' command. General. No arguments.
+			if (checkCommand(argc, argv, patPath, "help", 0))
+			{
+				std::cout << "general" << std::endl;
+			}
+
+			// 'help' command. Gives help about a certain command. 'pat help {command name}'
+			if (checkCommand(argc, argv, patPath, "help", 1))
+			{
+				std::cout << "specific" << std::endl;
 			}
 		}
 		else
