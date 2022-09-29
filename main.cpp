@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include "./crypto/md5.cpp"
+#include "./zlib/zlib.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -36,6 +37,24 @@ bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::st
 	}
 
 	return false;
+}
+
+bool initStart(std::filesystem::path patPath, char *patPathArray)
+{
+	bool successOnCreation = std::filesystem::create_directory(patPath);
+	if (!std::filesystem::create_directory(patPath / "objects"))
+		successOnCreation = false;
+
+#ifdef _WIN32
+	// Only hide the folder in Windows, UNIX based OS' hide folders whose name starts with a '.' automatically.
+	if (!SetFileAttributes(patPathArray, FILE_ATTRIBUTE_HIDDEN))
+		successOnCreation = false;
+#endif
+
+	std::ofstream ofs(patPath / "history");
+	ofs.close();
+
+	return successOnCreation;
 }
 
 int main(int argc, char *argv[])
@@ -76,18 +95,7 @@ int main(int argc, char *argv[])
 			{
 				if (!std::filesystem::exists(patPath))
 				{
-					bool successOnCreation = std::filesystem::create_directory(patPath);
-					if (!std::filesystem::create_directory(patPath / "objects"))
-						successOnCreation = false;
-
-#ifdef _WIN32
-					// Only hide the folder in Windows, UNIX based OS' hide folders whose name starts with a '.' automatically.
-					if (!SetFileAttributes(patPathArray, FILE_ATTRIBUTE_HIDDEN))
-						successOnCreation = false;
-#endif
-
-					std::ofstream ofs(patPath / "history");
-					ofs.close();
+					bool successOnCreation = initStart(patPath, patPathArray);
 
 					if (successOnCreation)
 					{
