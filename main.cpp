@@ -10,11 +10,12 @@
 #include <Windows.h>
 #endif
 
-std::string cmdNames[6] = {"init", "track", "register", "push", "copy", "help"};
-std::string helpQuotes[6] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'"};
+const int cmdLen = 6;
+std::string cmdNames[cmdLen] = {"init", "track", "register", "push", "copy", "help"};
+std::string helpQuotes[cmdLen] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'"};
 
 // Check if the command syntax is correct.
-bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired)
+bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError = true)
 {
 	if (commandStr != "init" && !std::filesystem::exists(patPath))
 	{
@@ -28,7 +29,7 @@ bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::st
 	{
 		bool result = argumentsRequired == -1 || argc == (argumentsRequired + 2);
 
-		if (!result)
+		if (pushError && !result)
 		{
 			std::cout << "Wrong syntax for command '" << commandStr << "'. The command takes " << argumentsRequired << (argumentsRequired == 1 ? " argument" : " arguments") << " but " << (argc - 2) << ((argc - 2) == 1 ? " was" : " were") << " given. See 'pat help'." << std::endl;
 		}
@@ -50,9 +51,6 @@ bool initStart(std::filesystem::path patPath, char *patPathArray)
 	if (!SetFileAttributes(patPathArray, FILE_ATTRIBUTE_HIDDEN))
 		successOnCreation = false;
 #endif
-
-	std::ofstream ofs(patPath / "history");
-	ofs.close();
 
 	return successOnCreation;
 }
@@ -79,7 +77,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		bool valid = false;
-		for (int i = 0; i < cmdNames->length(); i++)
+		for (int i = 0; i < cmdLen; i++)
 		{
 			if (argv[1] == cmdNames[i])
 			{
@@ -115,6 +113,21 @@ int main(int argc, char *argv[])
 			// 'track' command. Tracks all changes done to the working directory. 'pat track'
 			if (checkCommand(argc, argv, patPath, "track", 0))
 			{
+				using iterator = std::filesystem::recursive_directory_iterator;
+
+				for (const auto &value : iterator(workingPath))
+				{
+					if (value.path().string().find(patPath.string()) == std::string::npos)
+					{
+						std::string hash = md5(value.path());
+
+						int dataType = 0; // 0 = file, 1 = directory
+						if (std::filesystem::is_directory(value.path()))
+						{
+							dataType = 1;
+						}
+					}
+				}
 			}
 
 			// 'register' command. Registers the current changes under a name. 'pat register {name}'
@@ -135,16 +148,18 @@ int main(int argc, char *argv[])
 				std::cout << argc;
 			}
 
-			// 'help' command. General. No arguments.
-			if (checkCommand(argc, argv, patPath, "help", 0))
+			// 'help' command.
+			if (checkCommand(argc, argv, patPath, "help", 0, false))
 			{
 				std::cout << "general" << std::endl;
 			}
-
-			// 'help' command. Gives help about a certain command. 'pat help {command name}'
-			if (checkCommand(argc, argv, patPath, "help", 1))
+			else if (checkCommand(argc, argv, patPath, "help", 1, false))
 			{
 				std::cout << "specific" << std::endl;
+			}
+			else if (strcmp(argv[1], "help") == 0)
+			{
+				std::cout << "Wrong syntax for command 'help'. The command takes at most 1 argument but " << (argc - 2) << ((argc - 2) == 1 ? " was" : " were") << " given. See 'pat help'." << std::endl;
 			}
 		}
 		else

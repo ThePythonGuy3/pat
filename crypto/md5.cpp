@@ -35,6 +35,7 @@ documentation and/or software.
 
 /* system implementation headers */
 #include <cstdio>
+#include <filesystem>
 
 // Constants for MD5Transform routine.
 #define S11 7
@@ -366,6 +367,13 @@ std::ostream &operator<<(std::ostream &out, MD5 md5)
 std::string md5(const std::string str)
 {
 	MD5 md5 = MD5(str);
+
+	return md5.hexdigest();
+}
+
+std::string md5(const std::filesystem::path path)
+{
+	MD5 md5 = MD5(path.string());
 
 	return md5.hexdigest();
 }
