@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <map>
 #include "./crypto/md5.cpp"
 #include "./zlib/zlib.h"
 #include "./zlib/highZlib.cpp"
@@ -11,9 +13,9 @@
 #include <Windows.h>
 #endif
 
-const int cmdLen = 6;
-std::string cmdNames[cmdLen] = {"init", "track", "register", "push", "copy", "help"};
-std::string helpQuotes[cmdLen] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'"};
+const int cmdLen = 7;
+std::string cmdNames[cmdLen] = {"init", "track", "register", "push", "copy", "peek", "help"};
+std::string helpQuotes[cmdLen] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'", "Reads the data of an object. 'pat peek {hash}'"};
 
 // Check if the command syntax is correct.
 bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError = true)
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
 
 	// The .pat/ directory path inside of the working directory.
 	std::filesystem::path patPath = workingPath / ".pat";
+	std::string patTreeHash = md5(workingPath);
 
 	int n = patPath.string().length();
 
@@ -117,6 +120,10 @@ int main(int argc, char *argv[])
 			// 'track' command. Tracks all changes done to the working directory. 'pat track'
 			if (checkCommand(argc, argv, patPath, "track", 0))
 			{
+				std::vector<std::string> treeHashes;						 // All hashes for tree type objects
+				std::vector<std::string> mainObjects;						 // All hashes for objects in the main directory
+				std::map<std::string, std::vector<std::string>> treeHashMap; // A hash(tree)->hash(object) map. Stores temporary data.
+
 				using iterator = std::filesystem::recursive_directory_iterator;
 
 				for (const auto &value : iterator(workingPath))
@@ -126,26 +133,53 @@ int main(int argc, char *argv[])
 
 					if (pathString.find(patPath.string()) == std::string::npos)
 					{
-						std::ifstream ifs(pathString);
-						std::string content((std::istreambuf_iterator<char>(ifs)),
-											(std::istreambuf_iterator<char>()));
-
-						std::string hash = md5(content);
-						std::string tag = hash.substr(0, 2);
-						std::string name = hash.substr(2, hash.length());
-
-						std::cout << hash + " " << tag + " " << name << std::endl;
-
 						int dataType = 0; // 0 = file, 1 = directory
 						if (std::filesystem::is_directory(path))
 						{
 							dataType = 1;
 						}
+
+						std::string fcontent, hash, tag, name;
+						std::string parentHash = md5(path.parent_path());
+
+						if (dataType == 0)
+						{
+							std::ifstream ifs(pathString);
+							std::string content((std::istreambuf_iterator<char>(ifs)),
+												(std::istreambuf_iterator<char>()));
+							fcontent = "blob " + std::to_string(content.length()) + "\n" + content;
+
+							hash = md5(fcontent);
+						}
 						else
 						{
+							hash = md5(path);
+
+							treeHashes.push_back(hash);
+						}
+
+						if (parentHash != patTreeHash)
+						{
+							if (!treeHashMap.count(parentHash))
+							{
+								std::vector<std::string> children;
+								treeHashMap.insert(std::pair<std::string, std::vector<std::string>>(parentHash, children));
+							}
+
+							treeHashMap[parentHash].push_back((dataType ? "tree " : "blob ") + hash + "\n");
+						}
+						else
+						{
+						}
+
+						if (dataType == 0)
+						{
+							tag = hash.substr(0, 2);
+							name = hash.substr(2, hash.length());
+
 							std::filesystem::create_directories((patPath / "objects") / tag);
 
-							std::string compressed = highZlib::compress_string(content);
+							std::string compressed = highZlib::compress_string(fcontent);
 
 							std::ofstream file(((patPath / "objects") / tag) / name);
 							file << compressed;
@@ -153,6 +187,31 @@ int main(int argc, char *argv[])
 							file.close();
 						}
 					}
+				}
+
+				for (int i = 0; i < treeHashes.size(); i++)
+				{
+					std::vector<std::string> hashes = treeHashMap[treeHashes[i]];
+					std::string value = "tree " + std::to_string(hashes.size()) + "\n";
+
+					for (int j = 0; j < hashes.size(); j++)
+					{
+						value += hashes[j];
+					}
+
+					std::string tag, name, hash = treeHashes[i];
+
+					tag = hash.substr(0, 2);
+					name = hash.substr(2, hash.length());
+
+					std::filesystem::create_directories((patPath / "objects") / tag);
+
+					std::string compressed = highZlib::compress_string(value);
+
+					std::ofstream file(((patPath / "objects") / tag) / name);
+					file << compressed;
+
+					file.close();
 				}
 			}
 
@@ -172,6 +231,29 @@ int main(int argc, char *argv[])
 			if (checkCommand(argc, argv, patPath, "copy", 1))
 			{
 				std::cout << argc;
+			}
+
+			// 'peek' command. Reads the data of an object. 'pat peek {hash}'
+			if (checkCommand(argc, argv, patPath, "peek", 1))
+			{
+				std::string arg = argv[2], tag, name;
+
+				tag = arg.substr(0, 2);
+				name = arg.substr(2, arg.length());
+
+				std::filesystem::path readPath = ((patPath / "objects") / tag) / name;
+				if (std::filesystem::exists(readPath))
+				{
+					std::ifstream ifs(readPath);
+					std::string content((std::istreambuf_iterator<char>(ifs)),
+										(std::istreambuf_iterator<char>()));
+
+					std::cout << highZlib::decompress_string(content) << std::endl;
+				}
+				else
+				{
+					std::cout << "Object '" << argv[2] << "' not found.";
+				}
 			}
 
 			// 'help' command.
