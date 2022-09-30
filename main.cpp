@@ -47,9 +47,11 @@ bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::st
 bool initStart(std::filesystem::path patPath, char *patPathArray)
 {
 	bool successOnCreation = std::filesystem::create_directory(patPath);
-	if (!std::filesystem::create_directory(patPath / "objects"))
+	if (!std::filesystem::create_directory(patPath / "objects")) // Object storage.
 		successOnCreation = false;
-	if (!std::filesystem::create_directory(patPath / "meta"))
+	if (!std::filesystem::create_directory(patPath / "cmit")) // Tracked but non-commited files.
+		successOnCreation = false;
+	if (!std::filesystem::create_directory(patPath / "meta")) // Metadata, makes tracking faster.
 		successOnCreation = false;
 
 #ifdef _WIN32
@@ -170,6 +172,7 @@ int main(int argc, char *argv[])
 						}
 						else
 						{
+							mainObjects.push_back(hash);
 						}
 
 						if (dataType == 0)
