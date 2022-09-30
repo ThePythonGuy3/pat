@@ -5,6 +5,7 @@
 #include <string>
 #include "./crypto/md5.cpp"
 #include "./zlib/zlib.h"
+#include "./zlib/highZlib.cpp"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -40,10 +41,13 @@ bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::st
 	return false;
 }
 
+// init command code. Used both in init and reset.
 bool initStart(std::filesystem::path patPath, char *patPathArray)
 {
 	bool successOnCreation = std::filesystem::create_directory(patPath);
 	if (!std::filesystem::create_directory(patPath / "objects"))
+		successOnCreation = false;
+	if (!std::filesystem::create_directory(patPath / "meta"))
 		successOnCreation = false;
 
 #ifdef _WIN32
@@ -117,14 +121,36 @@ int main(int argc, char *argv[])
 
 				for (const auto &value : iterator(workingPath))
 				{
-					if (value.path().string().find(patPath.string()) == std::string::npos)
+					std::filesystem::path path = value.path();
+					std::string pathString = path.string();
+
+					if (pathString.find(patPath.string()) == std::string::npos)
 					{
-						std::string hash = md5(value.path());
+						std::ifstream ifs(pathString);
+						std::string content((std::istreambuf_iterator<char>(ifs)),
+											(std::istreambuf_iterator<char>()));
+
+						std::string hash = md5(content);
+						std::string tag = hash.substr(0, 2);
+						std::string name = hash.substr(2, hash.length());
+
+						std::cout << hash + " " << tag + " " << name << std::endl;
 
 						int dataType = 0; // 0 = file, 1 = directory
-						if (std::filesystem::is_directory(value.path()))
+						if (std::filesystem::is_directory(path))
 						{
 							dataType = 1;
+						}
+						else
+						{
+							std::filesystem::create_directories((patPath / "objects") / tag);
+
+							std::string compressed = highZlib::compress_string(content);
+
+							std::ofstream file(((patPath / "objects") / tag) / name);
+							file << compressed;
+
+							file.close();
 						}
 					}
 				}
