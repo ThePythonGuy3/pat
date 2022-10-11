@@ -15,7 +15,7 @@
 
 const int cmdLen = 7;
 std::string cmdNames[cmdLen] = {"init", "track", "register", "push", "copy", "peek", "help"};
-std::string helpQuotes[cmdLen] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'", "Reads the data of an object. 'pat peek {hash}'"};
+std::string helpQuotes[cmdLen] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'", "Reads the data of an object. 'pat peek {hash}'", "Displays help. 'pat help' (general) / 'pat help {command}' (specific)."};
 
 // Check if the command syntax is correct.
 bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError = true)
@@ -56,7 +56,7 @@ bool initStart(std::filesystem::path patPath, char *patPathArray)
 
 #ifdef _WIN32
 	// Only hide the folder in Windows, UNIX based OS' hide folders whose name starts with a '.' automatically.
-	if (!SetFileAttributes(patPathArray, FILE_ATTRIBUTE_HIDDEN))
+	if (!SetFileAttributes((LPWSTR)patPathArray, FILE_ATTRIBUTE_HIDDEN))
 		successOnCreation = false;
 #endif
 
