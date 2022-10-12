@@ -90,8 +90,6 @@ int main(int argc, char *argv[])
 					std::filesystem::path path = value.path();
 					std::string pathString = path.string();
 
-					std::cout << pathString << std::endl;
-
 					if (pathString.find(patPath.string()) == std::string::npos)
 					{
 						std::cout << readMetadata(path) << std::endl;
