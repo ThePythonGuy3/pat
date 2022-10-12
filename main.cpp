@@ -225,7 +225,26 @@ int main(int argc, char *argv[])
 			}
 			else if (checkCommand(argc, argv, patPath, "help", 1, false))
 			{
-				std::cout << "specific" << std::endl;
+				bool valid = false;
+				int pos = 0;
+				for (int i = 0; i < cmdLen; i++)
+				{
+					if (argv[2] == cmdNames[i])
+					{
+						pos = i;
+						valid = true;
+						break;
+					}
+				}
+
+				if (valid)
+				{
+					std::cout << "'" << argv[2] << "': " << helpQuotes[pos] << std::endl;
+				}
+				else
+				{
+					std::cout << "Command '" << argv[2] << "' doesn't exist.";
+				}
 			}
 			else if (strcmp(argv[1], "help") == 0)
 			{

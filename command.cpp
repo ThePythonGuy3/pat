@@ -9,7 +9,7 @@
 // Check if the command syntax is correct.
 bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError = true)
 {
-	if (commandStr != "init" && !std::filesystem::exists(patPath))
+	if (commandStr != "init" && commandStr != "help" && !std::filesystem::exists(patPath))
 	{
 		std::cout << "The current directory is not PAT-enabled. Activate PAT by using the 'pat init' command.";
 		return false;
