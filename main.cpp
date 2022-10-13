@@ -9,7 +9,7 @@
 #include "./crypto/md5.cpp"
 #include "./zlib/zlib.h"
 #include "./zlib/highZlib.cpp"
-#include "./command.cpp"
+#include "./commands.cpp"
 #include "./filedata.cpp"
 
 #ifdef _WIN32
@@ -17,8 +17,57 @@
 #endif
 
 const int cmdLen = 7;
-std::string cmdNames[cmdLen] = {"init", "track", "register", "push", "copy", "peek", "help"};
-std::string helpQuotes[cmdLen] = {"Enables PAT for the current directory. 'pat init'", "Tracks all changes done to the working directory. 'pat track'", "Registers the current changes under a name. 'pat register {name}'", "Pushes the changes made into the remote server's project. 'pat push'", "Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'", "Reads the data of an object. 'pat peek {hash}'", "Displays help. 'pat help' (general) / 'pat help {command}' (specific)."};
+std::string cmdNames[cmdLen] = {
+	"init",
+	"track",
+	"register",
+	"push",
+	"copy",
+	"peek",
+	"help"};
+
+std::string helpQuotes[cmdLen] = {
+	"Enables PAT for the current directory. 'pat init'",
+	"Tracks all changes done to the working directory. 'pat track'",
+	"Registers the current changes under a name. 'pat register {name}'",
+	"Pushes the changes made into the remote server's project. 'pat push'",
+	"Copies a certain PAT project from the remote server. 'pat copy {remote server project name}'",
+	"Reads the data of an object. 'pat peek {hash}'",
+	"Displays help. 'pat help' (general) / 'pat help {command}' (specific)."};
+
+void specificHelp(std::string command)
+{
+	bool valid = false;
+	int pos = 0;
+	for (int i = 0; i < cmdLen; i++)
+	{
+		if (command == cmdNames[i])
+		{
+			pos = i;
+			valid = true;
+			break;
+		}
+	}
+
+	if (valid)
+	{
+		std::cout << "'" << command << "': " << helpQuotes[pos] << std::endl;
+	}
+	else
+	{
+		std::cout << "Command '" << command << "' doesn't exist." << std::endl;
+	}
+}
+
+void generalHelp()
+{
+	std::cout << "Commands: " << std::endl;
+
+	for (int i = 0; i < cmdLen; i++)
+	{
+		specificHelp(cmdNames[i]);
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -38,7 +87,8 @@ int main(int argc, char *argv[])
 	// One single argument. Pops out help.
 	if (argc <= 1)
 	{
-		std::cout << "Welcome to PAT, insert help here blah blah..." << std::endl;
+		std::cout << "Welcome to PAT." << std::endl;
+		generalHelp();
 	}
 	else
 	{
@@ -57,124 +107,13 @@ int main(int argc, char *argv[])
 			// 'init' command. Enables PAT for the current directory. 'pat init'
 			if (checkCommand(argc, argv, patPath, "init", 0))
 			{
-				if (!std::filesystem::exists(patPath))
-				{
-					bool successOnCreation = initStart(patPath, patPathArray);
-
-					if (successOnCreation)
-					{
-						std::cout << "PAT initialized." << std::endl;
-					}
-					else
-					{
-						std::cout << "PAT failed to initialize here." << std::endl;
-					}
-				}
-				else
-				{
-					std::cout << "PAT already enabled in this directory." << std::endl;
-				}
+				init(patPath, patPathArray);
 			}
 
 			// 'track' command. Tracks all changes done to the working directory. 'pat track'
 			if (checkCommand(argc, argv, patPath, "track", 0))
 			{
-				std::vector<std::string> treeHashes;						 // All hashes for tree type objects
-				std::vector<std::string> mainObjects;						 // All hashes for objects in the main directory
-				std::map<std::string, std::vector<std::string>> treeHashMap; // A hash(tree)->hash(object) map. Stores temporary data.
-
-				using iterator = std::filesystem::recursive_directory_iterator;
-
-				for (const auto &value : iterator(workingPath))
-				{
-					std::filesystem::path path = value.path();
-					std::string pathString = path.string();
-
-					if (pathString.find(patPath.string()) == std::string::npos)
-					{
-						std::cout << readMetadata(path) << std::endl;
-
-						int dataType = 0; // 0 = file, 1 = directory
-						if (std::filesystem::is_directory(path))
-						{
-							dataType = 1;
-						}
-
-						std::string fcontent, hash, tag, name;
-						std::string parentHash = md5(path.parent_path());
-
-						if (dataType == 0)
-						{
-							std::ifstream ifs(pathString);
-							std::string content((std::istreambuf_iterator<char>(ifs)),
-												(std::istreambuf_iterator<char>()));
-							fcontent = "blob " + std::to_string(content.length()) + "\n" + content;
-
-							hash = md5(fcontent);
-						}
-						else
-						{
-							hash = md5(path);
-
-							treeHashes.push_back(hash);
-						}
-
-						if (parentHash != patTreeHash)
-						{
-							if (!treeHashMap.count(parentHash))
-							{
-								std::vector<std::string> children;
-								treeHashMap.insert(std::pair<std::string, std::vector<std::string>>(parentHash, children));
-							}
-
-							treeHashMap[parentHash].push_back((dataType ? "tree " : "blob ") + hash + "\n");
-						}
-						else
-						{
-							mainObjects.push_back(hash);
-						}
-
-						if (dataType == 0)
-						{
-							tag = hash.substr(0, 2);
-							name = hash.substr(2, hash.length());
-
-							std::filesystem::create_directories((patPath / "objects") / tag);
-
-							std::string compressed = highZlib::compress_string(fcontent);
-
-							std::ofstream file(((patPath / "objects") / tag) / name);
-							file << compressed;
-
-							file.close();
-						}
-					}
-				}
-
-				for (int i = 0; i < treeHashes.size(); i++)
-				{
-					std::vector<std::string> hashes = treeHashMap[treeHashes[i]];
-					std::string value = "tree " + std::to_string(hashes.size()) + "\n";
-
-					for (int j = 0; j < hashes.size(); j++)
-					{
-						value += hashes[j];
-					}
-
-					std::string tag, name, hash = treeHashes[i];
-
-					tag = hash.substr(0, 2);
-					name = hash.substr(2, hash.length());
-
-					std::filesystem::create_directories((patPath / "objects") / tag);
-
-					std::string compressed = highZlib::compress_string(value);
-
-					std::ofstream file(((patPath / "objects") / tag) / name);
-					file << compressed;
-
-					file.close();
-				}
+				track(workingPath, patPath, patTreeHash);
 			}
 
 			// 'register' command. Registers the current changes under a name. 'pat register {name}'
@@ -198,53 +137,17 @@ int main(int argc, char *argv[])
 			// 'peek' command. Reads the data of an object. 'pat peek {hash}'
 			if (checkCommand(argc, argv, patPath, "peek", 1))
 			{
-				std::string arg = argv[2], tag, name;
-
-				tag = arg.substr(0, 2);
-				name = arg.substr(2, arg.length());
-
-				std::filesystem::path readPath = ((patPath / "objects") / tag) / name;
-				if (std::filesystem::exists(readPath))
-				{
-					std::ifstream ifs(readPath);
-					std::string content((std::istreambuf_iterator<char>(ifs)),
-										(std::istreambuf_iterator<char>()));
-
-					std::cout << highZlib::decompress_string(content) << std::endl;
-				}
-				else
-				{
-					std::cout << "Object '" << argv[2] << "' not found.";
-				}
+				peek(argv, patPath);
 			}
 
 			// 'help' command.
 			if (checkCommand(argc, argv, patPath, "help", 0, false))
 			{
-				std::cout << "general" << std::endl;
+				generalHelp();
 			}
 			else if (checkCommand(argc, argv, patPath, "help", 1, false))
 			{
-				bool valid = false;
-				int pos = 0;
-				for (int i = 0; i < cmdLen; i++)
-				{
-					if (argv[2] == cmdNames[i])
-					{
-						pos = i;
-						valid = true;
-						break;
-					}
-				}
-
-				if (valid)
-				{
-					std::cout << "'" << argv[2] << "': " << helpQuotes[pos] << std::endl;
-				}
-				else
-				{
-					std::cout << "Command '" << argv[2] << "' doesn't exist.";
-				}
+				specificHelp(argv[2]);
 			}
 			else if (strcmp(argv[1], "help") == 0)
 			{
