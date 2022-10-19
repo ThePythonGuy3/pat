@@ -1,4 +1,5 @@
-*.exe
 .vscode/
-zlib/*.o
-zlib/*.a
+build/
+*.exe
+*.o
+*.a
