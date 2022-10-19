@@ -6,11 +6,11 @@ _**Use under your own risk, project very early in development.**_
 ---
 **1**. Creating a static library from `zlib` (Once):
 
-	cd zlib
-	gcc -c *.c
-	ar -rc libz.a *.o
+        cd zlib
+        gcc -c *.c
+        ar -rc libz.a *.o
 
 **2**. Compiling:
-
-    g++ -o pat.exe main.cpp -L./zlib -lz -O3 -std=c++20
+ 
+        g++ -o pat.exe main.cpp filedata.cpp commands.cpp crypto/md5.cpp zlib/highZlib.cpp -L./zlib -lz -O3 -std=c++20
 

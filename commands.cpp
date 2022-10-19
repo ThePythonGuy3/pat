@@ -1,15 +1,22 @@
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 #include <string>
+#include <vector>
+#include <map>
 
-#include "./filedata.cpp"
+#include "crypto/md5.h"
+#include "zlib/zlib.h"
+#include "zlib/highZlib.h"
+#include "commands.h"
+#include "filedata.h"
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
 // Check if the command syntax is correct.
-bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError = true)
+bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError)
 {
 	if (commandStr != "init" && commandStr != "help" && !std::filesystem::exists(patPath))
 	{
@@ -32,6 +39,11 @@ bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::st
 	}
 
 	return false;
+}
+
+bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired)
+{
+	return checkCommand(argc, argv, patPath, commandStr, argumentsRequired, true);
 }
 
 // init command code. Used both in init and reset.
@@ -92,7 +104,7 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
 		if (pathString.find(patPath.string()) == std::string::npos)
 		{
-			std::cout << readMetadata(path) << std::endl;
+            std::cout << highZlib::compress_string(readMetadata(path)) << std::endl;
 
 			int dataType = 0; // 0 = file, 1 = directory
 			if (std::filesystem::is_directory(path))

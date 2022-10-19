@@ -1,10 +1,10 @@
 #include <filesystem>
 #include <string>
 #include <iostream>
+#include "filedata.h"
 
 typedef long long llint;
 
-#ifndef FILEDATA
 template <typename TP>
 std::time_t to_time_t(TP tp)
 {
@@ -27,12 +27,8 @@ std::string readMetadata(std::filesystem::path path)
 			size = std::filesystem::file_size(path);
 		}
 
-		std::cout << unixMtime + " " << size << std::endl;
-
-		return std::to_string(size) + ";";
+		return std::to_string(unixMtime) + ";" + std::to_string(size) + ";";
 	}
 
-	return "yo moma";
+	return "";
 }
-#define FILEDATA
-#endif

@@ -6,11 +6,11 @@
 #include <vector>
 #include <map>
 
-#include "./crypto/md5.cpp"
-#include "./zlib/zlib.h"
-#include "./zlib/highZlib.cpp"
-#include "./commands.cpp"
-#include "./filedata.cpp"
+#include "crypto/md5.h"
+#include "zlib/zlib.h"
+#include "zlib/highZlib.h"
+#include "commands.h"
+#include "filedata.h"
 
 #ifdef _WIN32
 #include <Windows.h>

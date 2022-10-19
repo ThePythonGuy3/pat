@@ -3,15 +3,16 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <cstring>
 
 #include "zlib.h"
+#include "highZlib.h"
 
 namespace highZlib
 {
 	/** Compress a STL string using zlib with given compression level and return
 	 * the binary data. */
-	std::string compress_string(const std::string &str,
-								int compressionlevel = Z_BEST_COMPRESSION)
+	std::string compress_string(const std::string &str, int compressionlevel)
 	{
 		z_stream zs; // z_stream is zlib's control structure
 		memset(&zs, 0, sizeof(zs));
@@ -52,6 +53,11 @@ namespace highZlib
 		}
 
 		return outstring;
+	}
+
+	std::string compress_string(const std::string &str)
+	{
+		return compress_string(str, Z_BEST_COMPRESSION);
 	}
 
 	/** Decompress an STL string using zlib and return the original data. */
