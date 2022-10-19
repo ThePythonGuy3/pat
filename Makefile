@@ -15,7 +15,7 @@ $(TARGET): $(FINAL_DIRS) zlib/libz.a
 
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
-	$(CXX) -c $< -o $@
+	$(CXX) -c $< -o $@ -O3 -std=c++20
 
 zlib/libz.a:
 	$(MAKE) -C zlib
