@@ -4,13 +4,10 @@ Project Administration Tool (PAT) is an experimental Version Control software.
 _**Use under your own risk, project very early in development.**_
 
 ---
-**1**. Creating a static library from `zlib` (Once):
+_**NOTE:**_ You will require the GNU Compiler Collection (GCC) installed, and MINGW for Windows Systems.
 
-        cd zlib
-        gcc -c *.c
-        ar -rc libz.a *.o
+**1** Compiling the project
+    make
 
-**2**. Compiling:
- 
-        g++ -o pat.exe main.cpp filedata.cpp commands.cpp crypto/md5.cpp zlib/highZlib.cpp -L./zlib -lz -O3 -std=c++20
-
+**2** Removing object files
+    make clean
