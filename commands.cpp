@@ -18,17 +18,18 @@
 // Check if the command syntax is correct.
 bool checkCommand(int argc, char *argv[], std::filesystem::path patPath, std::string commandStr, int argumentsRequired, bool pushError)
 {
-	if (commandStr != "init" && commandStr != "help" && !std::filesystem::exists(patPath))
-	{
-		std::cout << "The current directory is not PAT-enabled. Activate PAT by using the 'pat init' command.";
-		return false;
-	}
-
 	const char *command = commandStr.c_str();
 
 	if (strcmp(argv[1], command) == 0)
 	{
-		bool result = argumentsRequired == -1 || argc == (argumentsRequired + 2);
+
+        if (commandStr != "init" && commandStr != "help" && !std::filesystem::exists(patPath))
+        {
+            std::cout << "The current directory is not PAT-enabled. Activate PAT by using the 'pat init' command.";
+            return false;
+        }
+        
+        bool result = argumentsRequired == -1 || argc == (argumentsRequired + 2);
 
 		if (pushError && !result)
 		{
@@ -97,6 +98,7 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
 	using iterator = std::filesystem::recursive_directory_iterator;
 
+    std::string modFile = "";
 	for (const auto &value : iterator(workingPath))
 	{
 		std::filesystem::path path = value.path();
@@ -104,8 +106,6 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
 		if (pathString.find(patPath.string()) == std::string::npos)
 		{
-            std::cout << highZlib::compress_string(readMetadata(path)) << std::endl;
-
 			int dataType = 0; // 0 = file, 1 = directory
 			if (std::filesystem::is_directory(path))
 			{
@@ -131,7 +131,9 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 				treeHashes.push_back(hash);
 			}
 
-			if (parentHash != patTreeHash)
+            modFile += pathString + ";" + readMetadata(path) + "\n";
+			
+            if (parentHash != patTreeHash)
 			{
 				if (!treeHashMap.count(parentHash))
 				{
@@ -160,10 +162,21 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
 				file.close();
 			}
-		}
+		}    
 	}
+    
+    std::cout << modFile << std::endl;
 
-	for (int i = 0; i < treeHashes.size(); i++)
+    modFile.pop_back();
+
+    std::filesystem::create_directories(patPath / "meta");
+
+    std::ofstream metaFile((patPath / "meta") / "modFile");
+    metaFile << highZlib::compress_string(modFile);
+    
+    metaFile.close();
+	
+    for (int i = 0; i < treeHashes.size(); i++)
 	{
 		std::vector<std::string> hashes = treeHashMap[treeHashes[i]];
 		std::string value = "tree " + std::to_string(hashes.size()) + "\n";

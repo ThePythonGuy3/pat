@@ -11,16 +11,24 @@ COMP_DIRS := $(subst ./,,$(COMP_DIRS))
 FINAL_DIRS := $(COMP_DIRS:%=$(BUILD_DIR)/%.o)
 
 $(TARGET): $(FINAL_DIRS) zlib/libz.a
-	$(CXX) $(FINAL_DIRS) -o $@ -L./zlib -lz -O3 -std=c++20
+	@echo Creating executable file...
+	@$(CXX) $(FINAL_DIRS) -o $@ -L./zlib -lz -O3 -std=c++20
+	@echo Completed.
 
 $(BUILD_DIR)/%.cpp.o: %.cpp
-	mkdir -p $(dir $@)
-	$(CXX) -c $< -o $@ -O3 -std=c++20
+	@echo Compiling $<
+	@mkdir -p $(dir $@)
+	@$(CXX) -c $< -o $@ -O3 -std=c++20
 
 zlib/libz.a:
-	$(MAKE) -C zlib
+	@echo Generating static library from zlib...
+	@$(MAKE) -C zlib
+	@echo Completed zlib.
 
 .PHONY: clean
 clean:
-	-rm -r $(BUILD_DIR)
-	$(MAKE) -C zlib clean
+	@if [ -d $(BUILD_DIR) ]; then \
+		rm -r $(BUILD_DIR); \
+	fi
+	@$(MAKE) -C zlib clean
+	@echo Done.
