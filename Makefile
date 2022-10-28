@@ -16,7 +16,7 @@ $(TARGET): $(FINAL_DIRS) zlib/libz.a
 	@echo Completed.
 
 $(BUILD_DIR)/%.cpp.o: %.cpp
-	@echo Compiling $<
+	@echo Compiling $<...
 	@mkdir -p $(dir $@)
 	@$(CXX) -c $< -o $@ -O3 -std=c++20
 

@@ -8,11 +8,11 @@ COMP_DIRS := $(subst ./,,$(COMP_DIRS))
 FINAL_DIRS := $(COMP_DIRS:%=$(BUILD_DIR)/%.o)
 
 libz.a: $(FINAL_DIRS)
-	@echo creating libz.a
+	@echo Creating libz.a...
 	@ar -rc libz.a build/*.o
 
 $(BUILD_DIR)/%.c.o: %.c
-	@echo Compiling $<
+	@echo Compiling $<...
 	@mkdir -p $(dir $@)
 	@$(CC) -c $< -o $@
 
