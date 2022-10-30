@@ -125,7 +125,12 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
             long long uTime = std::stoll(rest.substr(0, sSemicolon));
             long long chLen = std::stoll(rest.substr(sSemicolon + 1, rest.size() - 1));
 
-            std::cout << readMetadata(linePath)[0];
+            long long* currentData = readMetadata(linePath);
+
+            if(uTime != currentData[0] || chLen != currentData[1])
+            {
+                std::cout << linePath + " has been updated.";
+            }
         }
     }
 
