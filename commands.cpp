@@ -9,7 +9,6 @@
 #include "zlib/zlib.h"
 #include "zlib/highZlib.h"
 #include "commands.h"
-#include "zlib/newHighZlib.h"
 #include "filedata.h"
 
 #ifdef _WIN32
@@ -105,15 +104,30 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
     if (modFileExists)
     {
-        std::ifstream mfileS(mfileP.string());
+        std::ifstream mfileS(mfileP.string(), std::ios::binary);
         std::stringstream preModFileR;/*((std::istreambuf_iterator<char>(mfileS)),
                                 (std::istreambuf_iterator<char>()));*/
         preModFileR << mfileS.rdbuf();
         preModFile = preModFileR.str();
         mfileS.close();
-    }
 
-    std::cout << newHighZlib::decompress(preModFile) << std::endl << std::endl;
+        std::string decompModFile = highZlib::decompress_string(preModFile);
+
+        std::stringstream dStream(decompModFile);
+        std::string line;
+        while (std::getline(dStream, line, '\n'))
+        {
+            size_t fSemicolon = line.find(';');
+            std::string linePath = line.substr(0, fSemicolon);
+            std::string rest = line.substr(fSemicolon + 1);
+
+            size_t sSemicolon = rest.find(';');
+            long long uTime = std::stoll(rest.substr(0, sSemicolon));
+            long long chLen = std::stoll(rest.substr(sSemicolon + 1, rest.size() - 1));
+
+            std::cout << readMetadata(linePath)[0];
+        }
+    }
 
     std::string modFile = "";
     for (const auto &value : iterator(workingPath))
@@ -134,10 +148,10 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
             if (dataType == 0)
             {
-                std::ifstream ifs(pathString);
+                std::ifstream ifs(pathString, std::ios::binary);
                 std::string content((std::istreambuf_iterator<char>(ifs)),
                                     (std::istreambuf_iterator<char>()));
-                fcontent = "blob " + std::to_string(content.length()) + "\n" + content;
+                fcontent = "blob " + std::to_string(content.length()) + "\n" + path.string() + "\n" + content;
 
                 hash = md5(fcontent);
                 ifs.close();
@@ -149,7 +163,7 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
                 treeHashes.push_back(hash);
             }
 
-            modFile += pathString + ";" + readMetadata(path) + "\n";
+            modFile += pathString + ";" + readMetadataStr(path) + "\n";
 
             if (parentHash != patTreeHash)
             {
@@ -175,7 +189,7 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
                 std::string compressed = highZlib::compress_string(fcontent);
 
-                std::ofstream file(((patPath / "objects") / tag) / name);
+                std::ofstream file(((patPath / "objects") / tag) / name, std::ios::binary);
                 file << compressed;
 
                 file.close();
@@ -187,7 +201,7 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
     std::filesystem::create_directories(patPath / "meta");
 
-    std::ofstream metaFile((patPath / "meta") / "modFile");
+    std::ofstream metaFile((patPath / "meta") / "modFile", std::ios::binary);
     metaFile << highZlib::compress_string(modFile);
 
     metaFile.close();
@@ -211,7 +225,7 @@ void track(std::filesystem::path workingPath, std::filesystem::path patPath, std
 
         std::string compressed = highZlib::compress_string(value);
 
-        std::ofstream file(((patPath / "objects") / tag) / name);
+        std::ofstream file(((patPath / "objects") / tag) / name, std::ios::binary);
         file << compressed;
 
         file.close();
@@ -228,7 +242,7 @@ void peek(char *argv[], std::filesystem::path patPath)
     std::filesystem::path readPath = ((patPath / "objects") / tag) / name;
     if (std::filesystem::exists(readPath))
     {
-        std::ifstream ifs(readPath);
+        std::ifstream ifs(readPath, std::ios::binary);
         std::string content((std::istreambuf_iterator<char>(ifs)),
                             (std::istreambuf_iterator<char>()));
 
